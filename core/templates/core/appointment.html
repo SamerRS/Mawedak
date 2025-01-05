@@ -1,0 +1,187 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}حجز موعد - موعدك{% endblock %}
+
+{% block content %}
+<section class="content_section">
+  <div class="container">
+    <h2 class="text-center mb-4">حجز موعد</h2>
+    <p class="text-center mb-5">يرجى ملء النموذج أدناه لحجز موعدك بسهولة وسرعة.</p>
+    <form action="{% url 'appointment' %}" method="post">
+      {% csrf_token %}
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="fullName" class="form-label text-end w-100">الاسم الكامل</label>
+          <input type="text" class="form-control" id="fullName" name="fullName" placeholder="ادخل الاسم الرباعي" required>
+        </div>
+        <div class="col-md-6">
+          <label for="email" class="form-label text-end w-100">البريد الإلكتروني</label>
+          <input type="email" class="form-control" id="email" name="email" placeholder="أدخل بريدك الإلكتروني" required>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="phone" class="form-label text-end w-100">رقم الهاتف</label>
+          <input type="text" class="form-control" id="phone" name="phone" placeholder="أدخل رقم هاتفك" required>
+        </div>
+        <div class="col-md-6">
+          <label for="department" class="form-label text-end w-100">اختر الدائرة</label>
+          <select class="form-select" id="department" name="department" required>
+            <option value="">اختر دائرة</option>
+          </select>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="service" class="form-label text-end w-100">اختر الخدمة</label>
+          <select class="form-select" id="service" name="service" required>
+            <option value="">اختر خدمة</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="date" class="form-label text-end w-100">اختر التاريخ</label>
+          <input type="date" class="form-control" id="date" name="date" required>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="time" class="form-label text-end w-100">اختر الوقت</label>
+          <select class="form-select" id="time" name="time" required>
+            <option value="">اختر الوقت</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="notes" class="form-label text-end w-100">ملاحظات</label>
+        <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="أدخل أي ملاحظات إضافية"></textarea>
+      </div>
+      <div class="text-center">
+        <button type="submit" class="btn btn-primary btn-lg">حجز موعد</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% if messages %}
+  <div class="alert alert-success">
+    {% for message in messages %}
+      <p>{{ message }}</p>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const departmentSelect = document.getElementById('department');
+    const serviceSelect = document.getElementById('service');
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
+
+    // Fetch departments
+    fetch('/api/departments/')
+      .then(response => response.json())
+      .then(data => {
+        departmentSelect.innerHTML = '<option value="">اختر دائرة</option>';
+        data.forEach(department => {
+          const option = document.createElement('option');
+          option.value = department.id;
+          option.textContent = department.name;
+          departmentSelect.appendChild(option);
+        });
+      });
+
+    // Fetch services based on department
+    departmentSelect.addEventListener('change', function () {
+      const departmentId = this.value;
+      serviceSelect.innerHTML = '<option value="">اختر خدمة</option>';
+
+      if (departmentId) {
+        fetch(`/api/services/${departmentId}/`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.length === 0) {
+              serviceSelect.innerHTML = '<option value="">لا توجد خدمات</option>';
+            } else {
+              data.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = service.name;
+                serviceSelect.appendChild(option);
+              });
+            }
+          });
+      }
+    });
+
+    // Fetch available times based on service and date
+    dateInput.addEventListener('change', function () {
+      const serviceId = serviceSelect.value;
+      const selectedDate = this.value;
+      timeSelect.innerHTML = '<option value="">جار التحميل...</option>';
+
+      if (serviceId && selectedDate) {
+        fetch(`/api/reserved-times/${serviceId}/${selectedDate}/`)
+          .then(response => response.json())
+          .then(data => {
+            timeSelect.innerHTML = '<option value="">اختر الوقت</option>';
+            if (data.available_times.length > 0) {
+              data.available_times.forEach(time => {
+                const option = document.createElement('option');
+                option.value = time;
+                option.textContent = time;
+                timeSelect.appendChild(option);
+              });
+            } else {
+              timeSelect.innerHTML = '<option value="">لا توجد أوقات متاحة</option>';
+            }
+          });
+      }
+    });
+  });
+</script>
+
+<style>
+  .content_section {
+    background-color: #f8f9fa;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .form-label {
+    font-weight: bold;
+    color: #333;
+    text-align: right;
+  }
+
+  .form-control, .form-select {
+    border-radius: 15px; 
+    box-shadow: 2px 2px 2px rgb(126, 124, 124);
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s;
+  }
+
+  .form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+
+  .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    border-radius: 5px;
+  }
+
+  .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+  }
+
+  @media (max-width: 768px) {
+    .form-control, .form-select {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}تتبع الصف - موعدك{% endblock %}
+
+{% block content %}
+<section class="queue-section text-white">
+  <div class="container">
+    <h2 class="text-center mb-4">تتبع الصف</h2>
+
+    <!-- Current Queue Status -->
+    <div id="queue-status" class="mb-5">
+      <h4>الطابور الحالي</h4>
+      <p id="current-queue" class="text-warning">جار التحميل...</p>
+    </div>
+
+    <!-- User Appointments -->
+    <div id="user-appointments-section">
+      <h4>مواعيدي</h4>
+      <div id="user-appointments" class="text-white">
+        <p class="text-info">جار التحميل...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const queueStatus = document.getElementById('current-queue');
+    const userAppointmentsDiv = document.getElementById('user-appointments');
+
+    // Fetch Current Queue Status
+    function fetchQueueStatus() {
+      fetch('/api/current-queue/')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error fetching queue status.');
+          }
+          return response.json();
+        })
+        .then(data => {
+          queueStatus.textContent = data.message || 'تم قطع الاتصال بالطابور.';
+        })
+        .catch(error => {
+          queueStatus.textContent = 'حدث خطأ أثناء تحميل حالة الطابور.';
+          console.error(error);
+        });
+    }
+
+    // Fetch User's Appointments
+    function fetchUserAppointments() {
+      fetch('/queue/')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error fetching user appointments.');
+          }
+          return response.json();
+        })
+        .then(data => {
+          userAppointmentsDiv.innerHTML = '';
+
+          if (data.length === 0) {
+            userAppointmentsDiv.innerHTML = '<p class="text-info">لا توجد مواعيد متاحة.</p>';
+          } else {
+            const appointmentsList = document.createElement('ul');
+            appointmentsList.className = 'list-group';
+
+            data.forEach(appointment => {
+              const appointmentItem = document.createElement('li');
+              appointmentItem.className = 'list-group-item bg-dark text-white';
+
+              appointmentItem.innerHTML = `
+                <strong>الخدمة:</strong> ${appointment.service__name} <br>
+                <strong>الدائرة:</strong> ${appointment.department__name} <br>
+                <strong>التاريخ:</strong> ${appointment.appointment_date} <br>
+                <strong>الحالة:</strong> ${appointment.status === 'completed' ? 'مكتمل' : 'قيد الانتظار'}
+              `;
+              appointmentsList.appendChild(appointmentItem);
+            });
+
+            userAppointmentsDiv.appendChild(appointmentsList);
+          }
+        })
+        .catch(error => {
+          userAppointmentsDiv.innerHTML = '<p class="text-danger">حدث خطأ أثناء تحميل المواعيد.</p>';
+          console.error(error);
+        });
+    }
+
+    // Initial Fetches
+    fetchQueueStatus();
+    fetchUserAppointments();
+
+    // Set Intervals for Real-time Updates
+    setInterval(fetchQueueStatus, 10000); // Update queue status every 10 seconds
+    setInterval(fetchUserAppointments, 30000); // Update user appointments every 30 seconds
+  });
+</script>
+{% endblock %}
